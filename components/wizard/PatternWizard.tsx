@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { patternsData, Language } from '../../data/patterns';
 import { ConceptScreen, DetailScreen, ContextScreen, PseudoScreen } from './TheoryScreens';
 import { LanguageSelectScreen } from './LanguageSelectScreen';
@@ -20,6 +20,11 @@ export function PatternWizard({ userName }: Props) {
   const [language, setLanguage] = useState<Language>('Java');
   const [totalScore, setTotalScore] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Scroll to top on every screen change (step or pattern).
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [stepType, patternIndex]);
 
   const pattern = patternsData[patternIndex];
   const totalSteps = 6;

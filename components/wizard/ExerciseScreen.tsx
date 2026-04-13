@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+'use client';
+import React, { useState, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import { DndContext, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
 import { ExerciseData, Block } from '../../data/patterns';
@@ -9,12 +10,12 @@ import { cn } from '../ui/Card';
 import { ProgressBar } from './ProgressBar';
 
 // ──────────────────────────────────────────────────────────────
-// Syntax highlighter
+// Syntax highlighter (unchanged)
 // ──────────────────────────────────────────────────────────────
-const syntaxHighlightRealCode = (code: string) => {
+const syntaxHighlightRealCode = (code: string): string => {
   const lines = code.split('\n');
   const highlighted = lines.map(line => {
-    let processed = line.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    let processed = line.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     let codePart = processed;
     let commentPart = '';
     const commentMatch = processed.match(/(\/\/.*|#\s.*)/);
@@ -22,18 +23,22 @@ const syntaxHighlightRealCode = (code: string) => {
       codePart = processed.substring(0, commentMatch.index);
       commentPart = processed.substring(commentMatch.index);
     }
-
     const parts = codePart.split(/("[^"]*"|'[^']*')/g);
     for (let i = 0; i < parts.length; i++) {
       if (i % 2 === 0) {
         parts[i] = parts[i]
-          .replace(/\b(class|def|void|if|for|return|public|private|protected|interface|implements|extends|virtual|override|cout|printf|endl|pass|struct|typedef|char|int|string|String|System\.out\.println|print|cout)\b/g, '<span class="text-pink-400 font-bold">$1</span>')
+          .replace(
+            /\b(class|def|void|if|for|return|public|private|protected|interface|implements|extends|virtual|override|cout|printf|endl|pass|struct|typedef|char|int|string|String|System\.out\.println|print|cout)\b/g,
+            '<span class="text-pink-400 font-bold">$1</span>',
+          )
           .replace(/\b([A-Z][a-zA-Z0-9_]*)\b/g, (match, p1) => {
-            if (['String', 'System', 'DROPZONE'].includes(p1) || p1.startsWith('DROPZONE')) return match;
+            if (['String', 'System', 'DROPZONE'].includes(p1) || p1.startsWith('DROPZONE'))
+              return match;
             return `<span class="text-blue-400 font-bold">${p1}</span>`;
           })
           .replace(/([a-zA-Z_][a-zA-Z0-9_]*)\s*(?=\()/g, (match, p1) => {
-            if (['if', 'for', 'printf', 'print', 'sizeof', 'malloc'].includes(p1)) return `<span class="text-pink-400 font-bold">${p1}</span>`;
+            if (['if', 'for', 'printf', 'print', 'sizeof', 'malloc'].includes(p1))
+              return `<span class="text-pink-400 font-bold">${p1}</span>`;
             return `<span class="text-orange-400 font-medium">${p1}</span>`;
           })
           .replace(/\b(this|self)\b/g, '<span class="text-purple-400 font-semibold">$1</span>');
@@ -42,32 +47,28 @@ const syntaxHighlightRealCode = (code: string) => {
       }
     }
     codePart = parts.join('');
-
-    if (commentPart) {
-      codePart += `<span class="text-green-400 italic">${commentPart}</span>`;
-    }
-
+    if (commentPart) codePart += `<span class="text-green-400 italic">${commentPart}</span>`;
     return codePart;
   });
-
   return highlighted.join('\n');
 };
 
 // ──────────────────────────────────────────────────────────────
-// DraggableBlock — supports both drag and click-to-select
+// OptionBlock
+// Renders a selectable / draggable block in the "Available blocks" panel.
+// Click/tap → calls onOptionClick (pure selection, no placement).
+// Drag      → handled by DnD kit via listeners (separate concern).
 // ──────────────────────────────────────────────────────────────
-function DraggableBlock({
-  block,
-  disabled,
-  isSelected,
-  onSelect,
-}: {
+interface OptionBlockProps {
   block: Block;
-  disabled?: boolean;
-  isSelected?: boolean;
-  onSelect?: (block: Block) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  disabled: boolean;
+  isSelected: boolean;
+  /** Called when the user taps/clicks this block to select it. */
+  onOptionClick: (block: Block) => void;
+}
+
+function OptionBlock({ block, disabled, isSelected, onOptionClick }: OptionBlockProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: block.id,
     data: block,
     disabled,
@@ -77,82 +78,118 @@ function DraggableBlock({
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
     : undefined;
 
+  /**
+   * We attach onClick separately from the DnD listeners so that:
+   * - A short tap triggers selection (click intent).
+   * - A long press / drag triggers DnD (drag intent).
+   * DnD kit's PointerSensor already distinguishes these via its
+   * activationConstraint; a plain click will not start a drag.
+   */
+  const handleClick = () => {
+    if (disabled || isDragging) return;
+    onOptionClick(block);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
-      onClick={disabled ? undefined : () => onSelect?.(block)}
+      {...listeners}   // DnD listeners (pointerdown for drag)
+      {...attributes}  // aria attributes
+      onClick={handleClick}
+      role="button"
+      aria-pressed={isSelected}
+      aria-label={`Bloque: ${block.content.trim().slice(0, 40)}`}
       className={cn(
-        "bg-slate-900 dark:bg-[#1e1e1e] border-2 p-3 rounded-lg font-mono text-[14px] shadow-sm transition-all text-slate-100 w-full break-words whitespace-pre-wrap overflow-hidden box-border",
+        'bg-slate-900 dark:bg-[#1e1e1e] border-2 p-3 rounded-lg font-mono text-[14px]',
+        'shadow-sm transition-all text-slate-100 w-full break-words whitespace-pre-wrap',
+        'overflow-hidden box-border select-none',
         disabled
-          ? "opacity-50 cursor-not-allowed border-indigo-200 dark:border-slate-700"
+          ? 'opacity-50 cursor-not-allowed border-indigo-200 dark:border-slate-700'
           : isSelected
-          ? "border-yellow-400 ring-2 ring-yellow-400/60 bg-slate-800 dark:bg-[#2a2a1a] cursor-pointer scale-[1.02] shadow-lg shadow-yellow-400/20"
-          : "cursor-grab active:cursor-grabbing border-indigo-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-slate-500"
+            ? 'border-yellow-400 ring-2 ring-yellow-400/50 bg-slate-800 dark:bg-[#2a2a1a] cursor-pointer scale-[1.02] shadow-yellow-400/20 shadow-lg'
+            : 'cursor-grab active:cursor-grabbing border-indigo-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-slate-500',
       )}
-      title={disabled ? undefined : isSelected ? "Seleccionado — haz clic en un espacio para colocarlo" : "Haz clic para seleccionar o arrastra"}
     >
-      <span dangerouslySetInnerHTML={{ __html: syntaxHighlightRealCode(block.content) }} className="block w-full break-words" />
+      <span
+        className="block w-full break-words pointer-events-none"
+        dangerouslySetInnerHTML={{ __html: syntaxHighlightRealCode(block.content) }}
+      />
     </div>
   );
 }
 
 // ──────────────────────────────────────────────────────────────
-// DropzoneNode — supports drop AND click-to-place
+// DropzoneNode
+// Renders an inline dropzone inside the code template.
+// Click/tap → calls onDropzoneClick (placement happens here ONLY).
+// Drop      → handled by DnD kit via useDroppable.
 // ──────────────────────────────────────────────────────────────
+interface DropzoneNodeProps {
+  id: string;
+  currentBlock?: Block;
+  expectedBlock: Block;
+  hasSubmitted: boolean;
+  hasSelectedOption: boolean;
+  /** Called when the user taps/clicks this dropzone to place the selected option. */
+  onDropzoneClick: (dropzoneId: string) => void;
+}
+
 function DropzoneNode({
   id,
   currentBlock,
   expectedBlock,
   hasSubmitted,
-  selectedBlock,
-  onRemove,
-  onPlace,
-}: {
-  id: string;
-  currentBlock?: Block;
-  expectedBlock: Block;
-  hasSubmitted: boolean;
-  selectedBlock?: Block | null;
-  onRemove?: () => void;
-  onPlace?: (dropzoneId: string) => void;
-}) {
+  hasSelectedOption,
+  onDropzoneClick,
+}: DropzoneNodeProps) {
   const { isOver, setNodeRef } = useDroppable({ id, disabled: hasSubmitted });
+
   const isCorrect = currentBlock?.id === expectedBlock.id;
   const showFeedback = hasSubmitted;
-  const canPlace = !hasSubmitted && !!selectedBlock;
 
-  // ── Filled dropzone ──────────────────────────────────────────
+  const handleClick = () => {
+    if (hasSubmitted) return;
+    onDropzoneClick(id);
+  };
+
+  // ── Filled dropzone ────────────────────────────────────────
   if (currentBlock) {
     return (
       <span className="inline-flex flex-col items-start align-top mx-1 mb-2">
-        <span className="flex gap-2 items-center">
+        <span className="flex gap-2 items-center flex-wrap">
           <span
+            role={showFeedback ? undefined : 'button'}
+            onClick={handleClick}
             className={cn(
-              "inline-block border-2 text-slate-100 rounded px-2 py-0.5 font-mono text-[13px] sm:text-[14px] shadow-sm transition-colors break-words whitespace-pre-wrap align-middle shrink-0 max-w-[220px] overflow-x-auto",
+              'inline-block border-2 text-slate-100 rounded px-2 py-0.5',
+              'font-mono text-[13px] sm:text-[14px] shadow-sm transition-colors',
+              'break-words whitespace-pre-wrap align-middle shrink-0 max-w-[220px] overflow-x-auto select-none',
               showFeedback
                 ? isCorrect
-                  ? "bg-green-800/80 border-green-500"
-                  : "bg-red-800/80 border-red-500 opacity-70 line-through"
-                : canPlace
-                ? "bg-slate-700 dark:bg-[#2a2a1a] border-yellow-400 cursor-pointer hover:bg-slate-600 dark:hover:bg-[#333]"
-                : "bg-slate-800 dark:bg-[#252525] border-indigo-400 dark:border-slate-600 cursor-pointer hover:bg-slate-700 dark:hover:bg-[#333]"
+                  ? 'bg-green-800/80 border-green-500 cursor-default'
+                  : 'bg-red-800/80 border-red-500 opacity-70 line-through cursor-default'
+                : hasSelectedOption
+                  ? 'bg-slate-700 dark:bg-[#2a2a1a] border-yellow-400 cursor-pointer hover:brightness-110'
+                  : 'bg-slate-800 dark:bg-[#252525] border-indigo-400 dark:border-slate-600 cursor-pointer hover:bg-slate-700 dark:hover:bg-[#333]',
             )}
-            onClick={showFeedback ? undefined : canPlace ? () => onPlace?.(id) : onRemove}
             title={
               showFeedback
                 ? undefined
-                : canPlace
-                ? "Haz clic para reemplazar con el bloque seleccionado"
-                : "Haz clic para quitar este bloque"
+                : hasSelectedOption
+                  ? 'Toca para reemplazar con el bloque seleccionado'
+                  : 'Toca para quitar este bloque'
             }
             dangerouslySetInnerHTML={{ __html: syntaxHighlightRealCode(currentBlock.content) }}
           />
           {showFeedback && (
-            <span className={cn("text-[10px] sm:text-[11px] font-bold uppercase shrink-0", isCorrect ? "text-green-500" : "text-red-500")}>
-              {isCorrect ? "✓ Correcto" : "✗ Incorrecto"}
+            <span
+              className={cn(
+                'text-[10px] sm:text-[11px] font-bold uppercase shrink-0',
+                isCorrect ? 'text-green-500' : 'text-red-500',
+              )}
+            >
+              {isCorrect ? '✓ Correcto' : '✗ Incorrecto'}
             </span>
           )}
         </span>
@@ -177,7 +214,9 @@ function DropzoneNode({
           <span className="inline-block min-w-[120px] sm:min-w-[140px] h-8 border-2 border-dashed rounded bg-slate-800 dark:bg-[#1e1e1e] border-red-500/70 text-red-400/80 flex items-center justify-center font-mono text-[12px] opacity-70 overflow-hidden text-ellipsis whitespace-nowrap px-2">
             (Vacío)
           </span>
-          <span className="text-[10px] sm:text-[11px] font-bold uppercase text-red-500 shrink-0">✗ Incorrecto</span>
+          <span className="text-[10px] sm:text-[11px] font-bold uppercase text-red-500 shrink-0">
+            ✗ Incorrecto
+          </span>
         </span>
         <span className="mt-1 text-xs text-slate-400 flex flex-col w-full">
           <span className="text-green-400 font-semibold mb-0.5">Solución:</span>
@@ -190,26 +229,29 @@ function DropzoneNode({
     );
   }
 
-  // ── Empty, awaiting input ────────────────────────────────────
+  // ── Empty, awaiting placement ────────────────────────────────
   return (
     <span
       ref={setNodeRef}
-      onClick={canPlace ? () => onPlace?.(id) : undefined}
+      role="button"
+      aria-label="Espacio vacío, toca para colocar el bloque seleccionado"
+      onClick={handleClick}
       className={cn(
-        "inline-block min-w-[120px] sm:min-w-[140px] h-8 mx-1 border-2 border-dashed rounded bg-slate-800/50 dark:bg-[#1a1b26] align-middle transition-all",
-        canPlace
-          ? "border-yellow-400 bg-yellow-900/20 cursor-pointer hover:bg-yellow-800/30 animate-pulse"
+        'inline-block min-w-[120px] sm:min-w-[140px] h-8 mx-1 border-2 border-dashed rounded',
+        'bg-slate-800/50 dark:bg-[#1a1b26] align-middle transition-all select-none',
+        hasSelectedOption
+          ? 'border-yellow-400 bg-yellow-900/20 cursor-pointer hover:bg-yellow-800/30 animate-pulse'
           : isOver
-          ? "border-indigo-400 bg-indigo-900/50"
-          : "border-slate-600 dark:border-slate-500"
+            ? 'border-indigo-400 bg-indigo-900/50'
+            : 'border-slate-600 dark:border-slate-500',
       )}
-      title={canPlace ? "Haz clic para colocar el bloque seleccionado aquí" : undefined}
+      title={hasSelectedOption ? 'Toca para colocar aquí' : undefined}
     />
   );
 }
 
 // ──────────────────────────────────────────────────────────────
-// Main ExerciseScreen
+// ExerciseScreen
 // ──────────────────────────────────────────────────────────────
 interface Props {
   exercise: ExerciseData;
@@ -224,67 +266,96 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [scoreStats, setScoreStats] = useState({ correct: 0, total: 0 });
   const [timeoutOccurred, setTimeoutOccurred] = useState(false);
-  const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
+
+  /** The currently selected option. null = nothing selected. */
+  const [selectedOption, setSelectedOption] = useState<Block | null>(null);
 
   const [shuffledBlocks] = useState(() =>
-    [...exercise.blocks].sort(() => Math.random() - 0.5)
+    [...exercise.blocks].sort(() => Math.random() - 0.5),
   );
 
+  /** Blocks that have not yet been placed in any dropzone. */
   const availableBlocks = shuffledBlocks.filter(
-    b => !Object.values(answers).find(ans => ans.id === b.id)
+    b => !Object.values(answers).find(ans => ans.id === b.id),
   );
 
-  // ── Click-to-select handler ──────────────────────────────────
-  const handleBlockSelect = (block: Block) => {
-    if (hasSubmitted) return;
-    setSelectedBlock(prev => (prev?.id === block.id ? null : block));
-  };
+  // ── Step 1: Select an option ─────────────────────────────────
+  /**
+   * Selects or deselects a block.
+   * Nothing is placed here — placement only happens in handleDropzoneClick.
+   */
+  const handleOptionClick = useCallback(
+    (block: Block) => {
+      if (hasSubmitted) return;
+      // Toggle: clicking the already-selected block deselects it.
+      setSelectedOption(prev => (prev?.id === block.id ? null : block));
+    },
+    [hasSubmitted],
+  );
 
-  // ── Click-to-place handler ───────────────────────────────────
-  const handlePlace = (dropzoneId: string) => {
-    if (!selectedBlock || hasSubmitted) return;
-    setAnswers(prev => {
-      const next = { ...prev };
-      // If another dropzone held this block, free it first
-      const prevDropzone = Object.keys(next).find(k => next[k].id === selectedBlock.id);
-      if (prevDropzone) delete next[prevDropzone];
-      // Place in target (replaces whatever was there)
-      next[dropzoneId] = selectedBlock;
-      return next;
-    });
-    setSelectedBlock(null);
-  };
+  // ── Step 2: Place the selected option into a dropzone ─────────
+  /**
+   * The ONLY place where an option is assigned to a dropzone.
+   * - If selectedOption is null → nothing happens.
+   * - If dropzone already has a block → it is replaced.
+   * - If no option selected AND dropzone has content → content is removed (unplace).
+   */
+  const handleDropzoneClick = useCallback(
+    (dropzoneId: string) => {
+      if (hasSubmitted) return;
 
-  // ── Drag-and-drop handler (replaces existing content) ────────
-  const handleDragEnd = (event: DragEndEvent) => {
-    if (hasSubmitted) return;
-    const { active, over } = event;
-    if (over && over.id) {
-      const dropzoneId = String(over.id);
-      const block = active.data.current as Block;
+      if (!selectedOption) {
+        // No option selected: clicking a filled dropzone removes its block.
+        setAnswers(prev => {
+          if (!prev[dropzoneId]) return prev;
+          const next = { ...prev };
+          delete next[dropzoneId];
+          return next;
+        });
+        return;
+      }
+
+      // Place selectedOption into dropzoneId (replaces any existing block).
       setAnswers(prev => {
         const next = { ...prev };
-        // Free the dragged block from its previous dropzone, if any
+        // Free the option from a previous dropzone, if it was already placed.
+        const prevDropzone = Object.keys(next).find(k => next[k].id === selectedOption.id);
+        if (prevDropzone) delete next[prevDropzone];
+        next[dropzoneId] = selectedOption;
+        return next;
+      });
+
+      // Clear selection after placing.
+      setSelectedOption(null);
+    },
+    [hasSubmitted, selectedOption],
+  );
+
+  // ── Drag-and-drop (desktop bonus, works alongside click flow) ─
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      if (hasSubmitted) return;
+      const { active, over } = event;
+      if (!over?.id) return;
+
+      const dropzoneId = String(over.id);
+      const block = active.data.current as Block;
+
+      setAnswers(prev => {
+        const next = { ...prev };
         const prevDropzone = Object.keys(next).find(k => next[k].id === block.id);
         if (prevDropzone) delete next[prevDropzone];
-        // Place (replaces whatever was there)
         next[dropzoneId] = block;
         return next;
       });
-      setSelectedBlock(null);
-    }
-  };
+      // Clear any lingering selection after a drag.
+      setSelectedOption(null);
+    },
+    [hasSubmitted],
+  );
 
-  const removeAnswer = (dropzoneId: string) => {
-    if (hasSubmitted) return;
-    setAnswers(prev => {
-      const next = { ...prev };
-      delete next[dropzoneId];
-      return next;
-    });
-  };
-
-  const evaluate = () => {
+  // ── Evaluation ───────────────────────────────────────────────
+  const evaluate = useCallback(() => {
     let correct = 0;
     const total = exercise.dropzones.length;
     exercise.dropzones.forEach(dz => {
@@ -292,19 +363,19 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
     });
     setScoreStats({ correct, total });
     setHasSubmitted(true);
-    setSelectedBlock(null);
-  };
+    setSelectedOption(null);
+  }, [answers, exercise.dropzones]);
 
-  const handleTimeout = () => {
+  const handleTimeout = useCallback(() => {
     if (hasSubmitted) return;
     setTimeoutOccurred(true);
     evaluate();
-  };
+  }, [hasSubmitted, evaluate]);
 
   const handlePreSubmit = async () => {
     const result = await Swal.fire({
       title: '¿Estás seguro?',
-      text: "Se evaluarán tus respuestas y no podrás modificarlas después.",
+      text: 'Se evaluarán tus respuestas y no podrás modificarlas después.',
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Sí, enviar respuestas',
@@ -314,6 +385,7 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
     if (result.isConfirmed) evaluate();
   };
 
+  // ── Render the code template with inline dropzones ───────────
   const renderCode = () => {
     const parts = exercise.codeTemplate.split(/(\[DROPZONE_\d+\])/g);
     return parts.map((part, i) => {
@@ -322,7 +394,6 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
         const id = match[1];
         const dzConf = exercise.dropzones.find(d => d.id === id);
         const expectedBlock = exercise.blocks.find(b => b.id === dzConf?.expectedBlockId);
-
         return (
           <DropzoneNode
             key={i}
@@ -330,24 +401,32 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
             currentBlock={answers[id]}
             expectedBlock={expectedBlock!}
             hasSubmitted={hasSubmitted}
-            selectedBlock={selectedBlock}
-            onRemove={() => removeAnswer(id)}
-            onPlace={handlePlace}
+            hasSelectedOption={!!selectedOption}
+            onDropzoneClick={handleDropzoneClick}
           />
         );
       }
-      return <span key={i} dangerouslySetInnerHTML={{ __html: syntaxHighlightRealCode(part) }} />;
+      return (
+        <span key={i} dangerouslySetInnerHTML={{ __html: syntaxHighlightRealCode(part) }} />
+      );
     });
   };
 
   return (
     <Card className="max-w-5xl w-full mx-auto flex flex-col gap-6 p-4 sm:p-6 mb-10">
       <ProgressBar step={step} totalSteps={totalSteps} />
+
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b dark:border-slate-800 pb-4 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Completa el Código</h2>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+            Completa el Código
+          </h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            Arrastra los bloques o <span className="text-yellow-500 dark:text-yellow-400 font-medium">toca uno</span> y luego toca el espacio donde quieres colocarlo.
+            <span className="text-yellow-500 dark:text-yellow-400 font-semibold">1.</span>{' '}
+            Selecciona un bloque.{' '}
+            <span className="text-yellow-500 dark:text-yellow-400 font-semibold">2.</span>{' '}
+            Toca el espacio donde quieres colocarlo.
           </p>
         </div>
         {hasSubmitted ? (
@@ -366,46 +445,49 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
         )}
       </div>
 
-      {/* Selection hint banner */}
-      {selectedBlock && !hasSubmitted && (
-        <div className="flex items-center gap-3 bg-yellow-900/30 border border-yellow-500/50 rounded-lg px-4 py-2 text-yellow-300 text-sm animate-pulse">
-          <span className="text-lg">👆</span>
-          <span>
-            <strong>Seleccionado:</strong>{" "}
-            <code className="bg-black/30 rounded px-1 break-all">{selectedBlock.content.trim().slice(0, 40)}{selectedBlock.content.trim().length > 40 ? "…" : ""}</code>
-            {" "}— Toca un espacio en el código para colocarlo.{" "}
-            <button
-              onClick={() => setSelectedBlock(null)}
-              className="underline hover:text-yellow-100 ml-1 cursor-pointer"
-            >
-              Cancelar
-            </button>
+      {/* Selection hint banner — only visible when an option is selected */}
+      {selectedOption && !hasSubmitted && (
+        <div className="flex items-start gap-3 bg-yellow-900/30 border border-yellow-500/50 rounded-lg px-4 py-2.5 text-yellow-300 text-sm">
+          <span className="text-xl leading-none mt-0.5 shrink-0">👆</span>
+          <span className="flex-1 min-w-0">
+            <strong>Seleccionado:</strong>{' '}
+            <code className="bg-black/30 rounded px-1 break-all">
+              {selectedOption.content.trim().slice(0, 50)}
+              {selectedOption.content.trim().length > 50 ? '…' : ''}
+            </code>
+            {' — Toca un espacio en el código para colocarlo.'}
           </span>
+          <button
+            onClick={() => setSelectedOption(null)}
+            className="shrink-0 underline hover:text-yellow-100 cursor-pointer text-xs mt-0.5"
+            aria-label="Cancelar selección"
+          >
+            Cancelar
+          </button>
         </div>
       )}
 
       <DndContext onDragEnd={handleDragEnd}>
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Code area */}
+          {/* ── Code panel ────────────────────────────────────── */}
           <div className="lg:col-span-2 bg-[#1e1e1e] text-[#d4d4d4] p-4 sm:p-6 rounded-xl font-mono text-[13px] sm:text-[15px] leading-loose shadow-inner overflow-x-auto">
-            <div className="min-w-0 whitespace-pre-wrap break-words">
-              {renderCode()}
-            </div>
+            <div className="min-w-0 whitespace-pre-wrap break-words">{renderCode()}</div>
           </div>
 
-          {/* Blocks panel */}
+          {/* ── Blocks panel ──────────────────────────────────── */}
           <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-3 min-h-[350px]">
             <h3 className="font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-3 py-2 rounded shadow-sm border border-slate-100 dark:border-slate-700 text-center text-sm uppercase tracking-wider">
               Bloques Disponibles
             </h3>
+
             <div className="flex-1 flex flex-col gap-3 p-2">
               {availableBlocks.map(block => (
-                <DraggableBlock
+                <OptionBlock
                   key={block.id}
                   block={block}
                   disabled={hasSubmitted}
-                  isSelected={selectedBlock?.id === block.id}
-                  onSelect={handleBlockSelect}
+                  isSelected={selectedOption?.id === block.id}
+                  onOptionClick={handleOptionClick}
                 />
               ))}
               {availableBlocks.length === 0 && (
@@ -414,22 +496,37 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
                 </div>
               )}
             </div>
+
             <div className="mt-auto pt-4 border-t dark:border-slate-800 flex flex-col gap-3">
               {hasSubmitted ? (
                 <Button
-                  onClick={() => onComplete((scoreStats.correct / scoreStats.total) * 100, scoreStats.correct, scoreStats.total)}
+                  onClick={() =>
+                    onComplete(
+                      (scoreStats.correct / scoreStats.total) * 100,
+                      scoreStats.correct,
+                      scoreStats.total,
+                    )
+                  }
                   className="w-full h-14 text-lg"
                   variant="primary"
                 >
                   Continuar al Siguiente Patrón
                 </Button>
               ) : (
-                <Button onClick={handlePreSubmit} className="w-full h-14 text-lg" variant="secondary">
+                <Button
+                  onClick={handlePreSubmit}
+                  className="w-full h-14 text-lg"
+                  variant="secondary"
+                >
                   Enviar Solución
                 </Button>
               )}
               {onPrev && !hasSubmitted && (
-                <Button onClick={onPrev} className="w-full text-slate-500 dark:text-slate-400 font-semibold" variant="ghost">
+                <Button
+                  onClick={onPrev}
+                  className="w-full text-slate-500 dark:text-slate-400 font-semibold"
+                  variant="ghost"
+                >
                   Anterior
                 </Button>
               )}
