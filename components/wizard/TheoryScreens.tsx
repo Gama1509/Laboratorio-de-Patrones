@@ -130,12 +130,12 @@ export function ConceptScreen({ pattern, step, totalSteps, onNext }: ScreenProps
       </h2>
 
       <div className="space-y-6">
-        <div className="w-full rounded-2xl overflow-hidden shadow-inner border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900">
-          <div className="w-full h-[450px] md:h-[450px] flex items-center justify-center bg-white dark:bg-slate-900">
+        <div className="w-full rounded-2xl overflow-auto shadow-inner border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900 touch-pan-x touch-pan-y">
+          <div className="w-max min-w-full h-[250px] sm:h-[350px] md:h-[450px] flex items-center justify-center bg-white dark:bg-slate-900 mx-auto">
             <img
               src={pattern.conceptImage}
               alt="Ejemplo práctico"
-              className="w-full h-full object-cover object-center"
+              className="h-full w-auto max-w-none object-contain object-center"
             />
           </div>
         </div>
@@ -295,12 +295,12 @@ export function ContextScreen({ pattern, step, totalSteps, onNext, onPrev }: Scr
       <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 mb-6">Ejemplo Práctico</h2>
 
       <div className="space-y-6">
-        <div className="w-full rounded-2xl overflow-hidden shadow-inner border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-900">
-          <div className="w-full h-[400px] md:h-[400px] flex items-center justify-center bg-white dark:bg-slate-900">
+        <div className="w-full rounded-2xl overflow-auto shadow-inner border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-900 touch-pan-x touch-pan-y">
+          <div className="w-max min-w-full h-[300px] sm:h-[350px] md:h-[400px] flex items-center justify-center bg-white dark:bg-slate-900 mx-auto">
             <img
               src={pattern.exampleImage}
               alt="Ejemplo práctico"
-              className="w-full h-full object-cover object-center mix-blend-normal"
+              className="h-full w-auto max-w-none object-contain object-center mix-blend-normal"
             />
           </div>
         </div>

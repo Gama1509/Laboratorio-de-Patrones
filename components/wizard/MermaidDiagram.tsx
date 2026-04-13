@@ -96,18 +96,18 @@ export function MermaidDiagram({
   // 🎯 Tamaños por tipo + orientación
   const svgClass =
     orientation === 'TD'
-      ? '[&>svg]:min-w-[500px] [&>svg]:scale-110'
+      ? '[&>svg]:min-w-[500px] [&>svg]:scale-110 [&>svg]:origin-center'
       : type === 'uml'
-        ? '[&>svg]:min-w-[300px] [&>svg]:scale-120'
-        : '[&>svg]:min-w-[850px] [&>svg]:scale-112';
+        ? '[&>svg]:min-w-[300px] [&>svg]:scale-120 [&>svg]:origin-center'
+        : '[&>svg]:min-w-[850px] [&>svg]:scale-112 [&>svg]:origin-center';
 
   return (
     <div
-      className={`w-full rounded-2xl p-4 md:p-6 flex flex-col items-start sm:items-center justify-center shadow-inner border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto transition-colors duration-300`}
+      className={`w-full rounded-2xl shadow-inner border border-slate-200/60 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-auto touch-auto transition-colors duration-300`}
     >
       <div
         ref={containerRef}
-        className={`w-full max-w-3xl flex justify-center items-center transition-opacity duration-500 py-6 mx-auto ${svgClass}`}
+        className={`w-max min-w-full min-h-max flex justify-center items-center transition-opacity duration-500 p-12 sm:p-16 mx-auto ${svgClass}`}
         style={{ opacity: rendered ? 1 : 0 }}
       />
     </div>
