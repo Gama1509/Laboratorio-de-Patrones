@@ -367,10 +367,11 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b dark:border-slate-800 pb-4 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-3">
             Completa el Código
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
+
+          <p className="text-slate-500 dark:text-slate-300 text-base leading-relaxed">
             <span className="text-yellow-500 dark:text-yellow-400 font-semibold">1.</span>{' '}
             Selecciona un bloque.{' '}
             <span className="text-yellow-500 dark:text-yellow-400 font-semibold">2.</span>{' '}

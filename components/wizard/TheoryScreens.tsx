@@ -81,7 +81,7 @@ const flowDiagrams: Record<string, string> = {
     C --> D[Televisor\\nejecuta]
     D --> E((Fin))`,
 
-  composite: `flowchart TD
+  composite: `flowchart LR
     A[Cliente\\nhace orden] --> B{¿Es producto\\no combo?}
     B -- Producto --> C[Ejecutar directamente]
     B -- Combo --> D[Iterar sobre elementos]
@@ -141,13 +141,13 @@ export function ConceptScreen({ pattern, step, totalSteps, onNext }: ScreenProps
         </div>
 
         <div className="prose prose-slate dark:prose-invert max-w-none">
-          <p className="text-lg leading-relaxed text-slate-700 dark:text-slate-300 font-medium border-l-4 border-blue-500 pl-4 py-1">
+          <p className="text-lg leading-relaxed text-slate-700 dark:text-slate-100 font-medium border-l-4 border-blue-400 pl-4 py-1">
             {pattern.concept.definition}
           </p>
 
           {pattern.concept.analogy && (
             <div className="mt-5 bg-amber-50/50 dark:bg-amber-900/20 border border-amber-200/60 dark:border-amber-800/50 rounded-xl p-4 flex items-center shadow-sm">
-              <p className="text-amber-900 dark:text-amber-200 text-[15px] font-medium">
+              <p className="text-amber-900 dark:text-amber-200 text-base font-medium">
                 {pattern.concept.analogy}
               </p>
             </div>
@@ -155,25 +155,37 @@ export function ConceptScreen({ pattern, step, totalSteps, onNext }: ScreenProps
 
           <div className="grid md:grid-cols-2 gap-6 mt-6">
             <div className="bg-red-50/50 dark:bg-red-900/20 p-5 rounded-xl border border-red-100 dark:border-red-900/50">
-              <h4 className="flex items-center text-red-800 dark:text-red-400 font-bold mb-2">
-                <span className="w-2 h-2 rounded-full bg-red-500 dark:bg-red-500/80 mr-2"></span> El Problema
+              <h4 className="flex items-center text-lg font-bold text-red-800 dark:text-red-400 mb-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 dark:bg-red-500/80 mr-2"></span>
+                El Problema
               </h4>
-              <p className="text-sm text-slate-700 dark:text-slate-400">{pattern.concept.problem}</p>
+              <p className="text-base text-slate-700 dark:text-slate-200 leading-relaxed">
+                {pattern.concept.problem}
+              </p>
             </div>
 
             <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-5 rounded-xl border border-emerald-100 dark:border-emerald-900/50">
-              <h4 className="flex items-center text-emerald-800 dark:text-emerald-400 font-bold mb-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-500/80 mr-2"></span> La Solución
+              <h4 className="flex items-center text-lg font-bold text-emerald-800 dark:text-emerald-400 mb-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-emerald-500/80 mr-2"></span>
+                La Solución
               </h4>
-              <p className="text-sm text-slate-700 dark:text-slate-400">{pattern.concept.solution}</p>
+              <p className="text-base text-slate-700 dark:text-slate-200 leading-relaxed">
+                {pattern.concept.solution}
+              </p>
             </div>
           </div>
 
           <div className="mt-6">
-            <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-3">Ventajas clave:</h4>
+            <h4 className="font-bold text-lg text-slate-800 dark:text-green-300 mb-3">
+              Ventajas clave:
+            </h4>
+
             <ul className="space-y-2">
               {pattern.concept.advantages.map((adv, i) => (
-                <li key={i} className="flex items-start text-sm text-slate-700 dark:text-slate-400">
+                <li
+                  key={i}
+                  className="flex items-start text-base text-slate-700 dark:text-slate-200 leading-relaxed"
+                >
                   <span className="mr-2 text-green-500 dark:text-green-400 mt-0.5">✓</span>
                   <span>{adv}</span>
                 </li>
@@ -181,11 +193,17 @@ export function ConceptScreen({ pattern, step, totalSteps, onNext }: ScreenProps
             </ul>
           </div>
           <div className="mt-6">
-            <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-3">Desventajas clave:</h4>
+            <h4 className="font-bold text-lg text-slate-800 dark:text-rose-300 mb-3">
+              Desventajas clave:
+            </h4>
+
             <ul className="space-y-2">
               {pattern.concept.disadvantages.map((adv, i) => (
-                <li key={i} className="flex items-start text-sm text-slate-700 dark:text-slate-400">
-                  <span className="mr-2 text-red-500 dark:text-red-400 mt-0.5">X</span>
+                <li
+                  key={i}
+                  className="flex items-start text-base text-slate-700 dark:text-slate-200 leading-relaxed"
+                >
+                  <span className="mr-2 text-red-500 dark:text-red-400 mt-0.5 text-lg">✗</span>
                   <span>{adv}</span>
                 </li>
               ))}
@@ -210,33 +228,46 @@ export function DetailScreen({ pattern, step, totalSteps, onNext, onPrev }: Scre
 
       <div className="space-y-6">
         <MermaidDiagram
+          type="uml"
           chart={umlDiagrams[pattern.id]}
           fallbackText="Diagrama UML no interactivo disponible para este patrón en este momento."
         />
 
-        <div className="text-slate-700 dark:text-slate-300 text-base leading-relaxed mb-6">
+        <div className="text-slate-700 dark:text-slate-200 text-lg leading-relaxed mb-6">
           {pattern.details.explanation}
         </div>
 
         <div>
-          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Estructura del Patrón</h3>
+          <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">
+            Estructura del Patrón
+          </h3>
+
           <div className="grid gap-3">
             {pattern.details.structure.map((item, idx) => (
-              <div key={idx} className="bg-white dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-4">
+              <div
+                key={idx}
+                className="bg-white dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-start gap-4"
+              >
                 <div className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm shrink-0">
                   {idx + 1}
                 </div>
+
                 <div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-200">{item.name}</h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{item.description}</p>
+                  <h4 className="font-semibold text-lg text-slate-800 dark:text-blue-300">
+                    {item.name}
+                  </h4>
+
+                  <p className="text-base text-slate-600 dark:text-slate-200 mt-1 leading-relaxed">
+                    {item.description}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
 
           {pattern.details.flow && (
-            <div className="mt-6 bg-blue-50/60 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 p-4 rounded-xl flex items-center justify-center shadow-sm">
-              <p className="font-bold text-blue-900 dark:text-blue-200 text-[15px] tracking-wide">
+            <div className="mt-6 bg-blue-50/60 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50 p-4 rounded-xl flex items-center justify-center shadow-sm">
+              <p className="font-semibold text-blue-900 dark:text-blue-100 text-base tracking-wide leading-relaxed">
                 {pattern.details.flow}
               </p>
             </div>
@@ -275,8 +306,11 @@ export function ContextScreen({ pattern, step, totalSteps, onNext, onPrev }: Scr
         </div>
 
         <div className="bg-blue-50/50 dark:bg-blue-900/20 rounded-2xl p-6 border border-blue-100 dark:border-blue-900/50">
-          <h3 className="text-xl font-bold text-blue-900 dark:text-blue-200 mb-3">{pattern.exampleTheory.title}</h3>
-          <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+          <h3 className="text-2xl font-bold text-blue-900 dark:text-blue-200 mb-3">
+            {pattern.exampleTheory.title}
+          </h3>
+
+          <p className="text-lg text-slate-700 dark:text-slate-200 leading-relaxed">
             {pattern.exampleTheory.description}
           </p>
         </div>
@@ -337,6 +371,11 @@ const syntaxHighlight = (code: string) => {
 };
 
 export function PseudoScreen({ pattern, step, totalSteps, onNext, onPrev }: ScreenProps) {
+  const chart = flowDiagrams[pattern.id];
+
+  const detectedOrientation =
+    chart?.match(/flowchart\s+(LR|TD)/)?.[1] ?? 'LR';
+
   return (
     <Card className="max-w-5xl w-full mx-auto">
       <ProgressBar step={step} totalSteps={totalSteps} />
@@ -345,7 +384,9 @@ export function PseudoScreen({ pattern, step, totalSteps, onNext, onPrev }: Scre
 
       <div className="space-y-6">
         <MermaidDiagram
-          chart={flowDiagrams[pattern.id]}
+          orientation={detectedOrientation === 'TD' ? 'TD' : 'LR'}
+          type="flow"
+          chart={chart}
           fallbackText="Diagrama de flujo lógico no disponible para este patrón en este momento."
         />
 
@@ -366,15 +407,27 @@ export function PseudoScreen({ pattern, step, totalSteps, onNext, onPrev }: Scre
         {pattern.pseudoAnalysis && pattern.pseudoAnalysis.length > 0 && (
           <div className="mt-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm rounded-xl overflow-hidden">
             <div className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-2">
-              <span className="text-lg">🔍</span>
-              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-[15px]">Qué observar:</h4>
+              <span className="text-xl">🔍</span>
+
+              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-base">
+                Qué observar:
+              </h4>
             </div>
+
             <div className="p-4">
               <ul className="space-y-3">
                 {pattern.pseudoAnalysis.map((item, i) => (
-                  <li key={i} className="flex items-start text-[14px] text-slate-700 dark:text-slate-300 font-medium">
-                    <span className="mr-3 mt-0.5 w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-xs shrink-0">{i + 1}</span>
-                    <span className="pt-0.5 leading-relaxed">{item}</span>
+                  <li
+                    key={i}
+                    className="flex items-start text-base text-slate-700 dark:text-slate-200 font-medium"
+                  >
+                    <span className="mr-3 mt-0.5 w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold text-xs shrink-0">
+                      {i + 1}
+                    </span>
+
+                    <span className="pt-0.5 leading-relaxed">
+                      {item}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -383,16 +436,18 @@ export function PseudoScreen({ pattern, step, totalSteps, onNext, onPrev }: Scre
         )}
 
         {pattern.pseudoExplanation && (
-          <div className="mt-4 text-[15px] font-medium text-indigo-900 dark:text-indigo-200 bg-indigo-50/70 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-xl p-4 shadow-sm">
+          <div className="mt-4 text-base font-medium text-indigo-900 dark:text-indigo-200 bg-indigo-50/70 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-xl p-4 shadow-sm leading-relaxed">
             {pattern.pseudoExplanation}
           </div>
         )}
 
         <div className="mt-6 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-xl p-4 flex items-center gap-4 shadow-sm">
+
           <div className="bg-emerald-100 dark:bg-emerald-900/50 p-2 rounded-lg text-emerald-600 dark:text-emerald-400 shrink-0">
-            <span className="font-bold text-xl">✅</span>
+            <span className="font-bold text-2xl">✅</span>
           </div>
-          <p className="text-[15px] text-emerald-900 dark:text-emerald-100 font-medium leading-relaxed">
+
+          <p className="text-base text-emerald-900 dark:text-emerald-100 font-medium leading-relaxed">
             Ya comprendiste la teoría y la implementación. Ahora construye tú mismo el patrón <strong>{pattern.name}</strong> en el ejercicio interactivo.
           </p>
         </div>

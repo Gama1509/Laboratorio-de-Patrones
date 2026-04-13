@@ -373,7 +373,7 @@ void conectarEuropeo() {
 
       analogy: '🎮 Piensa en un control remoto universal: el control sigue siendo el mismo, pero puede funcionar con diferentes marcas de televisores.'
     },
-    conceptImage: "/images/bridge/bridgeConcept.webp",
+    conceptImage: "/images/bridge/bridgeconcept.webp",
 
     details: {
       explanation: 'El Bridge crea una separación entre la clase principal y la implementación concreta que realiza el trabajo, permitiendo que ambas evolucionen sin depender directamente una de la otra.',
