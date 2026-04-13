@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useCallback } from 'react';
 import Swal from 'sweetalert2';
-import { DndContext, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
 import { ExerciseData, Block } from '../../data/patterns';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -55,9 +54,8 @@ const syntaxHighlightRealCode = (code: string): string => {
 
 // ──────────────────────────────────────────────────────────────
 // OptionBlock
-// Renders a selectable / draggable block in the "Available blocks" panel.
-// Click/tap → calls onOptionClick (pure selection, no placement).
-// Drag      → handled by DnD kit via listeners (separate concern).
+// Renders a selectable block in the "Available blocks" panel.
+// Click/tap → calls onOptionClick (pure selection).
 // ──────────────────────────────────────────────────────────────
 interface OptionBlockProps {
   block: Block;
@@ -68,34 +66,13 @@ interface OptionBlockProps {
 }
 
 function OptionBlock({ block, disabled, isSelected, onOptionClick }: OptionBlockProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: block.id,
-    data: block,
-    disabled,
-  });
-
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 }
-    : undefined;
-
-  /**
-   * We attach onClick separately from the DnD listeners so that:
-   * - A short tap triggers selection (click intent).
-   * - A long press / drag triggers DnD (drag intent).
-   * DnD kit's PointerSensor already distinguishes these via its
-   * activationConstraint; a plain click will not start a drag.
-   */
   const handleClick = () => {
-    if (disabled || isDragging) return;
+    if (disabled) return;
     onOptionClick(block);
   };
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}   // DnD listeners (pointerdown for drag)
-      {...attributes}  // aria attributes
       onClick={handleClick}
       role="button"
       aria-pressed={isSelected}
@@ -108,7 +85,7 @@ function OptionBlock({ block, disabled, isSelected, onOptionClick }: OptionBlock
           ? 'opacity-50 cursor-not-allowed border-indigo-200 dark:border-slate-700'
           : isSelected
             ? 'border-yellow-400 ring-2 ring-yellow-400/50 bg-slate-800 dark:bg-[#2a2a1a] cursor-pointer scale-[1.02] shadow-yellow-400/20 shadow-lg'
-            : 'cursor-grab active:cursor-grabbing border-indigo-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-slate-500',
+            : 'cursor-pointer border-indigo-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-slate-500',
       )}
     >
       <span
@@ -123,7 +100,6 @@ function OptionBlock({ block, disabled, isSelected, onOptionClick }: OptionBlock
 // DropzoneNode
 // Renders an inline dropzone inside the code template.
 // Click/tap → calls onDropzoneClick (placement happens here ONLY).
-// Drop      → handled by DnD kit via useDroppable.
 // ──────────────────────────────────────────────────────────────
 interface DropzoneNodeProps {
   id: string;
@@ -143,8 +119,6 @@ function DropzoneNode({
   hasSelectedOption,
   onDropzoneClick,
 }: DropzoneNodeProps) {
-  const { isOver, setNodeRef } = useDroppable({ id, disabled: hasSubmitted });
-
   const isCorrect = currentBlock?.id === expectedBlock.id;
   const showFeedback = hasSubmitted;
 
@@ -232,7 +206,6 @@ function DropzoneNode({
   // ── Empty, awaiting placement ────────────────────────────────
   return (
     <span
-      ref={setNodeRef}
       role="button"
       aria-label="Espacio vacío, toca para colocar el bloque seleccionado"
       onClick={handleClick}
@@ -241,9 +214,7 @@ function DropzoneNode({
         'bg-slate-800/50 dark:bg-[#1a1b26] align-middle transition-all select-none',
         hasSelectedOption
           ? 'border-yellow-400 bg-yellow-900/20 cursor-pointer hover:bg-yellow-800/30 animate-pulse'
-          : isOver
-            ? 'border-indigo-400 bg-indigo-900/50'
-            : 'border-slate-600 dark:border-slate-500',
+          : 'border-slate-600 dark:border-slate-500',
       )}
       title={hasSelectedOption ? 'Toca para colocar aquí' : undefined}
     />
@@ -329,29 +300,6 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
       setSelectedOption(null);
     },
     [hasSubmitted, selectedOption],
-  );
-
-  // ── Drag-and-drop (desktop bonus, works alongside click flow) ─
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      if (hasSubmitted) return;
-      const { active, over } = event;
-      if (!over?.id) return;
-
-      const dropzoneId = String(over.id);
-      const block = active.data.current as Block;
-
-      setAnswers(prev => {
-        const next = { ...prev };
-        const prevDropzone = Object.keys(next).find(k => next[k].id === block.id);
-        if (prevDropzone) delete next[prevDropzone];
-        next[dropzoneId] = block;
-        return next;
-      });
-      // Clear any lingering selection after a drag.
-      setSelectedOption(null);
-    },
-    [hasSubmitted],
   );
 
   // ── Evaluation ───────────────────────────────────────────────
@@ -447,7 +395,7 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
 
       {/* Selection hint banner — only visible when an option is selected */}
       {selectedOption && !hasSubmitted && (
-        <div className="flex items-start gap-3 bg-yellow-900/30 border border-yellow-500/50 rounded-lg px-4 py-2.5 text-yellow-300 text-sm">
+        <div className="flex items-start gap-3 bg-yellow-900/30 border border-yellow-500/50 rounded-lg px-4 py-2.5 text-yellow-300 text-sm animate-pulse">
           <span className="text-xl leading-none mt-0.5 shrink-0">👆</span>
           <span className="flex-1 min-w-0">
             <strong>Seleccionado:</strong>{' '}
@@ -467,73 +415,71 @@ export function ExerciseScreen({ exercise, onComplete, onPrev, step, totalSteps 
         </div>
       )}
 
-      <DndContext onDragEnd={handleDragEnd}>
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* ── Code panel ────────────────────────────────────── */}
-          <div className="lg:col-span-2 bg-[#1e1e1e] text-[#d4d4d4] p-4 sm:p-6 rounded-xl font-mono text-[13px] sm:text-[15px] leading-loose shadow-inner overflow-x-auto">
-            <div className="min-w-0 whitespace-pre-wrap break-words">{renderCode()}</div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* ── Code panel ────────────────────────────────────── */}
+        <div className="lg:col-span-2 bg-[#1e1e1e] text-[#d4d4d4] p-4 sm:p-6 rounded-xl font-mono text-[13px] sm:text-[15px] leading-loose shadow-inner overflow-x-auto">
+          <div className="min-w-0 whitespace-pre-wrap break-words">{renderCode()}</div>
+        </div>
+
+        {/* ── Blocks panel ──────────────────────────────────── */}
+        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-3 min-h-[350px]">
+          <h3 className="font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-3 py-2 rounded shadow-sm border border-slate-100 dark:border-slate-700 text-center text-sm uppercase tracking-wider">
+            Bloques Disponibles
+          </h3>
+
+          <div className="flex-1 flex flex-col gap-3 p-2">
+            {availableBlocks.map(block => (
+              <OptionBlock
+                key={block.id}
+                block={block}
+                disabled={hasSubmitted}
+                isSelected={selectedOption?.id === block.id}
+                onOptionClick={handleOptionClick}
+              />
+            ))}
+            {availableBlocks.length === 0 && (
+              <div className="text-center text-slate-400 dark:text-slate-500 text-sm mt-8 italic">
+                No hay más bloques
+              </div>
+            )}
           </div>
 
-          {/* ── Blocks panel ──────────────────────────────────── */}
-          <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-3 min-h-[350px]">
-            <h3 className="font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 px-3 py-2 rounded shadow-sm border border-slate-100 dark:border-slate-700 text-center text-sm uppercase tracking-wider">
-              Bloques Disponibles
-            </h3>
-
-            <div className="flex-1 flex flex-col gap-3 p-2">
-              {availableBlocks.map(block => (
-                <OptionBlock
-                  key={block.id}
-                  block={block}
-                  disabled={hasSubmitted}
-                  isSelected={selectedOption?.id === block.id}
-                  onOptionClick={handleOptionClick}
-                />
-              ))}
-              {availableBlocks.length === 0 && (
-                <div className="text-center text-slate-400 dark:text-slate-500 text-sm mt-8 italic">
-                  No hay más bloques
-                </div>
-              )}
-            </div>
-
-            <div className="mt-auto pt-4 border-t dark:border-slate-800 flex flex-col gap-3">
-              {hasSubmitted ? (
-                <Button
-                  onClick={() =>
-                    onComplete(
-                      (scoreStats.correct / scoreStats.total) * 100,
-                      scoreStats.correct,
-                      scoreStats.total,
-                    )
-                  }
-                  className="w-full h-14 text-lg"
-                  variant="primary"
-                >
-                  Continuar al Siguiente Patrón
-                </Button>
-              ) : (
-                <Button
-                  onClick={handlePreSubmit}
-                  className="w-full h-14 text-lg"
-                  variant="secondary"
-                >
-                  Enviar Solución
-                </Button>
-              )}
-              {onPrev && !hasSubmitted && (
-                <Button
-                  onClick={onPrev}
-                  className="w-full text-slate-500 dark:text-slate-400 font-semibold"
-                  variant="ghost"
-                >
-                  Anterior
-                </Button>
-              )}
-            </div>
+          <div className="mt-auto pt-4 border-t dark:border-slate-800 flex flex-col gap-3">
+            {hasSubmitted ? (
+              <Button
+                onClick={() =>
+                  onComplete(
+                    (scoreStats.correct / scoreStats.total) * 100,
+                    scoreStats.correct,
+                    scoreStats.total,
+                  )
+                }
+                className="w-full h-14 text-lg"
+                variant="primary"
+              >
+                Continuar al Siguiente Patrón
+              </Button>
+            ) : (
+              <Button
+                onClick={handlePreSubmit}
+                className="w-full h-14 text-lg"
+                variant="secondary"
+              >
+                Enviar Solución
+              </Button>
+            )}
+            {onPrev && !hasSubmitted && (
+              <Button
+                onClick={onPrev}
+                className="w-full text-slate-500 dark:text-slate-400 font-semibold"
+                variant="ghost"
+              >
+                Anterior
+              </Button>
+            )}
           </div>
         </div>
-      </DndContext>
+      </div>
     </Card>
   );
 }
